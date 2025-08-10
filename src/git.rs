@@ -93,21 +93,19 @@ pub fn extract_git_info(repo_path: &Path) -> Result<GitInfo, GitError> {
 
 /// Extract all remotes from the repository
 fn extract_remotes(repo: &Repository) -> Result<Vec<GitRemote>, GitError> {
+    let mut remotes = Vec::new();
     let remote_names = repo.remotes()?;
-
-    let remotes: Vec<GitRemote> = remote_names
-        .iter()
-        .flatten()
-        .filter_map(|name| {
-            repo.find_remote(name)
-                .ok()
-                .and_then(|remote| remote.url().map(|url| url.to_string()))
-                .map(|url| GitRemote {
-                    name: name.to_string(),
-                    url,
-                })
-        })
-        .collect();
+    
+    for name in remote_names.iter().flatten() {
+        if let Ok(remote) = repo.find_remote(name)
+            && let Some(url) = remote.url() {
+            remotes.push(GitRemote {
+                name: name.to_string(),
+                url: url.to_string(),
+            });
+        }
+    }
+    
     Ok(remotes)
 }
 
