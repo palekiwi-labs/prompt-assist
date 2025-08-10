@@ -22,6 +22,15 @@
             rustToolchain
             pkgs.rust-analyzer
             pkgs.cargo-expand
+            pkgs.cargo-watch
+            pkgs.cargo-edit
+
+            pkgs.sqlite
+            pkgs.sqlite-interactive
+            pkgs.sqlx-cli
+
+            pkgs.pkg-config
+            pkgs.git
           ];
 
           shellHook = ''
