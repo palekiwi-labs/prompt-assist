@@ -5,7 +5,7 @@ pub mod output;
 pub mod prompt;
 
 use crate::cli::Cli;
-use crate::git::resolve_repo_path;
+use crate::git::{resolve_repo_path, extract_git_info};
 use crate::models::RepoInfo;
 use crate::output::write_output;
 use crate::prompt::generate_review_prompt;
@@ -48,8 +48,19 @@ pub fn run(cli: Cli) -> Result<(), AppError> {
     let repo_path = resolve_repo_path(cli.repo_path)?;
     println!("Found git repository at: {}", repo_path.display());
 
-    // Create repository info
-    let repo_info = RepoInfo::new(repo_path);
+    // Extract git information
+    let git_info = extract_git_info(&repo_path)?;
+    println!("Repository root: {}", git_info.repository_root.display());
+    if let Some(ref remote_url) = git_info.remote_url {
+        println!("GitHub remote: {}", remote_url);
+    }
+    if let Some(ref branch) = git_info.current_branch {
+        println!("Current branch: {}", branch);
+    }
+
+    // Create repository info with git information
+    let repo_info = RepoInfo::new(repo_path)
+        .with_git_info(git_info);
 
     // Generate markdown content
     let markdown_content = generate_review_prompt(cli.pr_number, &repo_info);
