@@ -42,7 +42,7 @@ chrono = "0.4"         # Date/time handling
 ### Architecture Decisions
 
 **Modular Design**: Clean separation of concerns with domain-specific modules
-**Synchronous-first**: Currently synchronous, will add async when needed for API calls
+**Builder Pattern**: Fluent RepoInfo construction for incremental data gathering
 **Pure Rust**: Using `rustls-tls` instead of OpenSSL to avoid native dependencies
 **Functional Style**: Pure functions for core logic, isolated side effects
 **Domain-Driven Errors**: Custom error types for each domain that compose well
@@ -53,9 +53,11 @@ chrono = "0.4"         # Date/time handling
 ### What's Implemented
 - [x] Modular architecture with clean separation of concerns
 - [x] CLI parsing with clap derive macros
-- [x] Git repository detection and validation  
+- [x] Git repository detection and validation using git2
+- [x] **Git information extraction** - remotes, current branch, GitHub URL detection
+- [x] **Builder pattern for RepoInfo** - incremental data gathering
 - [x] Output flag (`-o`) for writing to files or stdout
-- [x] Markdown prompt generation with basic template
+- [x] **Enhanced markdown prompt generation** with git context
 - [x] Domain-specific error types (GitError, OutputError, AppError)
 - [x] Pure functional design for core operations
 - [x] Nix development environment with fenix
@@ -73,6 +75,66 @@ prompt-assist 1234 -r fixtures/fixture-prompt-assist # Test with fixtures
 prompt-assist 1234 | grep "TODO"                     # Pipe output to other tools
 ```
 
+### Current Application Behavior
+When you run the CLI, you'll see output like:
+```
+Generating review prompt for PR #1234
+Found git repository at: /path/to/repo
+Repository root: /path/to/repo
+GitHub remote: git@github.com:user/repo.git
+Current branch: feature/my-feature
+```
+
+The generated markdown includes:
+- Repository path and root directory
+- GitHub remote URL (ready for API calls)
+- Current branch name
+- Complete list of all git remotes
+- Timestamp and PR context
+
+### Data Structures
+
+**Core Domain Models:**
+```rust
+pub struct RepoInfo {
+    pub path: PathBuf,
+    pub git_info: Option<GitInfo>,
+}
+
+pub struct GitInfo {
+    pub repository_root: PathBuf,
+    pub remote_url: Option<String>,    // GitHub URL for API calls
+    pub current_branch: Option<String>,
+    pub remotes: Vec<GitRemote>,       // All remotes for context
+}
+
+pub struct GitRemote {
+    pub name: String,  // "origin", "upstream", etc.
+    pub url: String,   // The remote URL
+}
+```
+
+**Builder Pattern Usage:**
+```rust
+let repo_info = RepoInfo::new(repo_path)
+    .with_git_info(git_info);
+```
+
+### Enhanced Data Flow
+```
+CLI Input (path + PR#) 
+    ↓
+resolve_repo_path() → PathBuf (validated)
+    ↓  
+extract_git_info() → GitInfo (git2 integration)
+    ↓
+RepoInfo::new(path).with_git_info(git_info) → Complete domain model
+    ↓
+generate_review_prompt() → Enhanced markdown with git context
+    ↓
+write_output() → File or stdout
+```
+
 ### Project Structure
 ```
 prompt-assist/
@@ -80,10 +142,10 @@ prompt-assist/
 │   ├── main.rs          # Minimal CLI entry point (6 lines)
 │   ├── lib.rs           # Library coordination and public API
 │   ├── cli.rs           # Command-line argument parsing
-│   ├── git.rs           # Git repository operations and validation
-│   ├── models.rs        # Domain data structures (RepoInfo, etc.)
+│   ├── git.rs           # Git operations using git2 (extraction, validation)
+│   ├── models.rs        # Domain data structures with builder pattern
 │   ├── output.rs        # File/stdout output handling
-│   └── prompt.rs        # Prompt content generation
+│   └── prompt.rs        # Prompt content generation (pure function)
 ├── fixtures/            # Test git repositories (committed)
 │   └── fixture-prompt-assist/  # Real git repo for testing
 ├── flake.nix           # Nix development environment
@@ -105,6 +167,7 @@ prompt-assist/
 - **Isolated Side Effects**: File I/O and git operations are clearly separated
 - **Composable Errors**: Domain errors that combine well through `From` traits
 - **Clean Dependencies**: Clear module boundaries with minimal coupling
+- **Builder Pattern**: Incremental data gathering with fluent APIs
 
 ### Testing Strategy
 - Real git repositories in `fixtures/` for development testing
@@ -114,16 +177,16 @@ prompt-assist/
 
 ### Current Module Responsibilities
 - **cli.rs**: CLI argument parsing only
-- **git.rs**: Git repository operations (validation, path resolution)  
-- **models.rs**: Domain data structures (RepoInfo, future PR/Issue types)
+- **git.rs**: Git repository operations (validation, git2 integration, remote extraction)
+- **models.rs**: Domain data structures (RepoInfo with builder pattern, GitInfo, GitRemote)
 - **output.rs**: File system writes and stdout handling
-- **prompt.rs**: Markdown content generation (pure function)
+- **prompt.rs**: Markdown content generation (pure function with git context)
 - **lib.rs**: Error composition and application coordination
 
 ## Next Steps (Planned)
 
 ### Immediate Next Steps
-1. **Git Remote Detection**: Extract GitHub repo URL from git remotes using git2
+1. **GitHub URL Parsing**: Extract owner/repo from git remote URLs for API calls
 2. **GitHub API Integration**: Fetch PR details, comments, reviews (re-add async)
 3. **Enhanced Diff Generation**: Use git2 to generate meaningful diffs between branches
 4. **Richer Prompt Templates**: More sophisticated markdown templates with PR context
@@ -133,6 +196,28 @@ prompt-assist/
 6. **Jira Integration**: Link PRs to Jira issues for complete context
 7. **Configuration System**: GitHub tokens, Jira credentials, custom templates
 8. **Multiple Output Formats**: JSON, YAML options alongside markdown
+
+## Git Integration Implementation
+
+### What We Built
+- **extract_git_info()**: Uses git2 to safely extract repository information
+- **Smart GitHub Detection**: Handles SSH and HTTPS URLs, prioritizes "origin" remote
+- **Error-Tolerant Remote Extraction**: Continues working even if some remotes are broken
+- **Lifetime-Optimized**: Returns borrowed data when possible, clones only when needed
+- **Idiomatic Rust**: Uses modern patterns like chained `if let` statements
+
+### Key Functions
+```rust
+pub fn extract_git_info(repo_path: &Path) -> Result<GitInfo, GitError>
+fn extract_remotes(repo: &Repository) -> Result<Vec<GitRemote>, GitError>
+fn find_github_remote(remotes: &[GitRemote]) -> Option<&str>
+fn get_current_branch(repo: &Repository) -> Result<Option<String>, GitError>
+```
+
+### Design Philosophy
+- **Graceful Degradation**: Works with partial information if some git operations fail
+- **Zero-Copy Where Possible**: Minimizes allocations during git data extraction
+- **Functional Composition**: Each function has a single, clear responsibility
 
 ## Development Environment
 
@@ -167,12 +252,14 @@ cargo run -- 1234 -o test-output.md --repo-path fixtures/fixture-prompt-assist
 - **Flexible output** (file or stdout) for composability
 - **Clear error messages** with helpful context
 - **Works from any directory** in a git repo
+- **Rich git context** in generated prompts
 
 ### Functional Programming
 - **Immutable data structures** where possible
 - **Pure functions** for core logic (prompt generation, validation)
 - **Composable operations** that can be easily tested
 - **Clear separation** between pure logic and side effects
+- **Builder pattern** for incremental data assembly
 
 ## Context for AI Assistant
 
@@ -184,4 +271,8 @@ When helping with this project:
 - **Focus on the core value** - Better AI prompts through comprehensive context
 - **Respect code boundaries** - Don't edit code without explicit permission
 
-The user is learning Rust and building their first substantial CLI tool. They appreciate explanations of concepts and prefer building understanding alongside functionality. The modular architecture is working well and should be maintained as we add complexity.
+The user is learning Rust and building their first substantial CLI tool. They appreciate explanations of concepts and prefer building understanding alongside functionality. The modular architecture and functional design patterns are working well and should be maintained as we add complexity.
+
+## Current Status
+
+We've successfully implemented the **git information extraction foundation** that will enable GitHub API integration. The application now extracts and includes rich git context in generated prompts, setting us up perfectly for the next phase of development: parsing GitHub URLs and implementing API calls to fetch PR details.
