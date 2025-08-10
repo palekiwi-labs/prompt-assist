@@ -1,23 +1,26 @@
 use std::path::PathBuf;
-use crate::git::GitInfo;
+use crate::git::GitData;
 
-/// Repository information for prompt generation
+/// Application-level context for prompt generation
+/// Composes data from various domains (git, github, jira, etc.)
 #[derive(Debug, Clone)]
-pub struct RepoInfo {
-    pub path: PathBuf,
-    pub git_info: Option<GitInfo>,
+pub struct PromptContext {
+    pub repo_path: PathBuf,
+    pub git: Option<GitData>,
+    // Future: github: Option<GitHubData>,
+    // Future: jira: Option<JiraData>,
 }
 
-impl RepoInfo {
-    pub fn new(path: PathBuf) -> Self {
-        Self { 
-            path,
-            git_info: None,
+impl PromptContext {
+    pub fn new(repo_path: PathBuf) -> Self {
+        Self {
+            repo_path,
+            git: None,
         }
     }
     
-    pub fn with_git_info(mut self, git_info: GitInfo) -> Self {
-        self.git_info = Some(git_info);
+    pub fn with_git(mut self, git: GitData) -> Self {
+        self.git = Some(git);
         self
     }
 }

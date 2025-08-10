@@ -6,7 +6,7 @@ pub mod prompt;
 
 use crate::cli::Cli;
 use crate::git::{resolve_repo_path, extract_git_info};
-use crate::models::RepoInfo;
+use crate::models::PromptContext;
 use crate::output::write_output;
 use crate::prompt::generate_review_prompt;
 
@@ -58,12 +58,12 @@ pub fn run(cli: Cli) -> Result<(), AppError> {
         println!("Current branch: {}", branch);
     }
 
-    // Create repository info with git information
-    let repo_info = RepoInfo::new(repo_path)
-        .with_git_info(git_info);
+    // Create prompt context with git information
+    let context = PromptContext::new(repo_path)
+        .with_git(git_info);
 
     // Generate markdown content
-    let markdown_content = generate_review_prompt(cli.pr_number, &repo_info);
+    let markdown_content = generate_review_prompt(cli.pr_number, &context);
 
     // Write output
     write_output(&markdown_content, cli.output)?;

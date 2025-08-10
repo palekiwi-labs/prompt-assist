@@ -2,9 +2,9 @@ use git2::Repository;
 use std::env;
 use std::path::{Path, PathBuf};
 
-/// Information extracted from a git repository
+/// Git domain data - all information extracted from a git repository
 #[derive(Debug, Clone)]
-pub struct GitInfo {
+pub struct GitData {
     pub repository_root: PathBuf,
     pub remote_url: Option<String>,
     pub current_branch: Option<String>,
@@ -65,7 +65,7 @@ pub fn validate_git_repository(path: &Path) -> Result<(), GitError> {
 }
 
 /// Extract git information from a repository
-pub fn extract_git_info(repo_path: &Path) -> Result<GitInfo, GitError> {
+pub fn extract_git_info(repo_path: &Path) -> Result<GitData, GitError> {
     // Open the repository using git2
     let repo = Repository::open(repo_path)?;
 
@@ -83,7 +83,7 @@ pub fn extract_git_info(repo_path: &Path) -> Result<GitInfo, GitError> {
     // Get current branch name
     let current_branch = get_current_branch(&repo)?;
 
-    Ok(GitInfo {
+    Ok(GitData {
         repository_root: repository_root.to_path_buf(),
         remote_url,
         current_branch,

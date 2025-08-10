@@ -1,7 +1,7 @@
-use crate::models::RepoInfo;
+use crate::models::PromptContext;
 
 /// Generate a review prompt markdown for the given PR number and repository
-pub fn generate_review_prompt(pr_number: u32, repo_info: &RepoInfo) -> String {
+pub fn generate_review_prompt(pr_number: u32, context: &PromptContext) -> String {
     let mut content = format!(
         r#"# Code Review Prompt for PR #{}
 
@@ -9,27 +9,27 @@ pub fn generate_review_prompt(pr_number: u32, repo_info: &RepoInfo) -> String {
 **Path:** {}
 "#,
         pr_number,
-        repo_info.path.display()
+        context.repo_path.display()
     );
 
     // Add git information if available
-    if let Some(ref git_info) = repo_info.git_info {
+    if let Some(ref git) = context.git {
         content.push_str(&format!(
             "**Repository Root:** {}\n",
-            git_info.repository_root.display()
+            git.repository_root.display()
         ));
         
-        if let Some(ref remote_url) = git_info.remote_url {
+        if let Some(ref remote_url) = git.remote_url {
             content.push_str(&format!("**GitHub URL:** {}\n", remote_url));
         }
         
-        if let Some(ref branch) = git_info.current_branch {
+        if let Some(ref branch) = git.current_branch {
             content.push_str(&format!("**Current Branch:** {}\n", branch));
         }
         
-        if !git_info.remotes.is_empty() {
+        if !git.remotes.is_empty() {
             content.push_str("\n**Git Remotes:**\n");
-            for remote in &git_info.remotes {
+            for remote in &git.remotes {
                 content.push_str(&format!("- {}: {}\n", remote.name, remote.url));
             }
         }
