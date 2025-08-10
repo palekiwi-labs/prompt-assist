@@ -1,5 +1,6 @@
 [package]
 name = "prompt-assist"
+authors = ["palekiwi"]
 version = "0.1.0"
 edition = "2024"
 
