@@ -13,46 +13,29 @@ impl LocalRepo {
 
         let repo = Repository::open(&path)?;
 
-        let remotes = extract_remotes(&repo)?;
-
-        let remote = find_github_remote(&remotes)
+        let remote = find_github_remote(&repo)?
             .ok_or(GitError::NoGitHubRemote)?;
 
         Ok(LocalRepo { repo, remote })
     }
 }
 
-fn extract_remotes(repo: &Repository) -> Result<Vec<GitRemote>, GitError> {
-    let mut remotes = Vec::new();
+fn find_github_remote(repo: &Repository) -> Result<Option<GitRemote>, GitError> {
     let remote_names = repo.remotes()?;
-
+    
     for name in remote_names.iter().flatten() {
         if let Ok(remote) = repo.find_remote(name)
             && let Some(url) = remote.url()
+            && is_github_url(url)
         {
-            remotes.push(GitRemote {
+            return Ok(Some(GitRemote {
                 name: name.to_string(),
                 url: url.to_string(),
-            });
+            }));
         }
     }
-
-    Ok(remotes)
-}
-
-fn find_github_remote(remotes: &[GitRemote]) -> Option<GitRemote> {
-    // Try to find "origin" remote that's a GitHub URL
-    if let Some(origin) = remotes.iter().find(|r| r.name == "origin")
-        && is_github_url(&origin.url)
-    {
-        return Some(origin.clone());
-    }
-
-    // If no GitHub origin, find any GitHub remote
-    remotes
-        .iter()
-        .find(|r| is_github_url(&r.url))
-        .map(|r| r.clone())
+    
+    Ok(None)
 }
 
 fn is_github_url(url: &str) -> bool {
