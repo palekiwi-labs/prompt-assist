@@ -95,27 +95,28 @@ pub fn extract_git_info(repo_path: &Path) -> Result<GitInfo, GitError> {
 fn extract_remotes(repo: &Repository) -> Result<Vec<GitRemote>, GitError> {
     let mut remotes = Vec::new();
     let remote_names = repo.remotes()?;
-    
+
     for name in remote_names.iter().flatten() {
         if let Ok(remote) = repo.find_remote(name)
-            && let Some(url) = remote.url() {
+            && let Some(url) = remote.url()
+        {
             remotes.push(GitRemote {
                 name: name.to_string(),
                 url: url.to_string(),
             });
         }
     }
-    
+
     Ok(remotes)
 }
 
 /// Find the best GitHub remote URL (prefer "origin", then any GitHub URL)
 fn find_github_remote(remotes: &[GitRemote]) -> Option<String> {
     // First, try to find "origin" remote that's a GitHub URL
-    if let Some(origin) = remotes.iter().find(|r| r.name == "origin") {
-        if is_github_url(&origin.url) {
-            return Some(origin.url.clone());
-        }
+    if let Some(origin) = remotes.iter().find(|r| r.name == "origin")
+        && is_github_url(&origin.url)
+    {
+        return Some(origin.url.clone());
     }
 
     // If no GitHub origin, find any GitHub remote
