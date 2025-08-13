@@ -4,6 +4,8 @@ use prompt_assist::error::AppError;
 
 fn main() -> Result<(), AppError> {
     let cli = Cli::parse();
+
     prompt_assist::run(cli)?;
+
     Ok(())
 }
