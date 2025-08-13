@@ -19,7 +19,7 @@ pub fn run(cli: Cli) -> Result<(), AppError> {
     let local_repo = LocalRepo::from_path(cli.repo_path)?;
     let pr = PullRequest {};
 
-    let context = PromptContext { repo: local_repo, pr };
+    let _context = PromptContext { repo: local_repo, pr };
 
     Ok(())
 }
