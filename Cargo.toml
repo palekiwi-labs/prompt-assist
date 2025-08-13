@@ -11,6 +11,10 @@ path = "src/lib.rs"
 path = "src/main.rs"
 name = "prompt-assist"
 
+[[example]]
+path = "examples/test_url_parsing.rs"
+name = "test_url_parsing"
+
 [dependencies]
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.43", features = ["derive"] }

@@ -30,3 +30,9 @@ impl From<OutputError> for AppError {
     }
 }
 
+impl From<PullRequestError> for AppError {
+    fn from(err: PullRequestError) -> Self {
+        AppError::PullRequest(err)
+    }
+}
+

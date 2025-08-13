@@ -1,10 +1,11 @@
-use crate::git::{GitError, GitRemote};
+use crate::git::{GitError, GitRemote, GitHubRepo};
 use git2::Repository;
 use std::{env, path::PathBuf};
 
 pub struct LocalRepo {
     pub repo: Repository,
     pub remote: GitRemote,
+    pub github_repo: GitHubRepo,
 }
 
 impl LocalRepo {
@@ -15,8 +16,10 @@ impl LocalRepo {
 
         let remote = find_github_remote(&repo)?
             .ok_or(GitError::NoGitHubRemote)?;
+        
+        let github_repo = GitHubRepo::from_url(&remote.url)?;
 
-        Ok(LocalRepo { repo, remote })
+        Ok(LocalRepo { repo, remote, github_repo })
     }
 }
 
