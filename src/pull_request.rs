@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PullRequest {
-    pub number: u64,
+    pub number: u32,
     pub title: String,
     pub body: Option<String>,
     pub state: String,
@@ -21,7 +21,7 @@ pub struct PullRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub login: String,
-    pub id: u64,
+    pub id: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct Branch {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IssueComment {
-    pub id: u64,
+    pub id: u32,
     pub user: User,
     pub body: String,
     pub created_at: DateTime<Utc>,
@@ -42,7 +42,7 @@ pub struct IssueComment {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReviewComment {
-    pub id: u64,
+    pub id: u32,
     pub user: User,
     pub body: String,
     pub path: String,
@@ -54,7 +54,7 @@ pub struct ReviewComment {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Review {
-    pub id: u64,
+    pub id: u32,
     pub user: User,
     pub body: Option<String>,
     pub state: String, // "APPROVED", "CHANGES_REQUESTED", "COMMENTED"
@@ -65,7 +65,7 @@ pub struct Review {
 pub enum PullRequestError {
     HttpError(reqwest::Error),
     JsonError(serde_json::Error),
-    NotFound(u64),
+    NotFound(u32),
     RateLimited,
     Unauthorized,
 }

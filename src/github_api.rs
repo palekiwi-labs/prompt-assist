@@ -24,7 +24,7 @@ impl GitHubClient {
     pub async fn fetch_pull_request(
         &self,
         github_repo: &GitHubRepo,
-        pr_number: u64,
+        pr_number: u32,
     ) -> Result<PullRequest, PullRequestError> {
         // Fetch basic PR data
         let pr_data = self.fetch_pr_data(github_repo, pr_number).await?;
@@ -51,7 +51,7 @@ impl GitHubClient {
     async fn fetch_pr_data(
         &self,
         github_repo: &GitHubRepo,
-        pr_number: u64,
+        pr_number: u32,
     ) -> Result<Value, PullRequestError> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/pulls/{}",
@@ -66,7 +66,7 @@ impl GitHubClient {
     async fn fetch_issue_comments(
         &self,
         github_repo: &GitHubRepo,
-        pr_number: u64,
+        pr_number: u32,
     ) -> Result<Vec<IssueComment>, PullRequestError> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/issues/{}/comments",
@@ -81,7 +81,7 @@ impl GitHubClient {
     async fn fetch_review_comments(
         &self,
         github_repo: &GitHubRepo,
-        pr_number: u64,
+        pr_number: u32,
     ) -> Result<Vec<ReviewComment>, PullRequestError> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/pulls/{}/comments",
@@ -96,7 +96,7 @@ impl GitHubClient {
     async fn fetch_reviews(
         &self,
         github_repo: &GitHubRepo,
-        pr_number: u64,
+        pr_number: u32,
     ) -> Result<Vec<Review>, PullRequestError> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/pulls/{}/reviews",
@@ -148,7 +148,7 @@ impl GitHubClient {
     }
 
     /// Parse the main pull request data from GitHub API response
-    fn parse_pull_request(&self, data: &Value, pr_number: u64) -> Result<PullRequest, PullRequestError> {
+    fn parse_pull_request(&self, data: &Value, pr_number: u32) -> Result<PullRequest, PullRequestError> {
         Ok(PullRequest {
             number: pr_number,
             title: data["title"].as_str().unwrap_or("").to_string(),
@@ -156,7 +156,7 @@ impl GitHubClient {
             state: data["state"].as_str().unwrap_or("").to_string(),
             author: User {
                 login: data["user"]["login"].as_str().unwrap_or("").to_string(),
-                id: data["user"]["id"].as_u64().unwrap_or(0),
+                id: data["user"]["id"].as_u64().unwrap_or(0) as u32,
             },
             base: Branch {
                 label: data["base"]["label"].as_str().unwrap_or("").to_string(),
@@ -188,10 +188,10 @@ impl GitHubClient {
         
         Ok(comments.iter().map(|comment| {
             IssueComment {
-                id: comment["id"].as_u64().unwrap_or(0),
+                id: comment["id"].as_u64().unwrap_or(0) as u32,
                 user: User {
                     login: comment["user"]["login"].as_str().unwrap_or("").to_string(),
-                    id: comment["user"]["id"].as_u64().unwrap_or(0),
+                    id: comment["user"]["id"].as_u64().unwrap_or(0) as u32,
                 },
                 body: comment["body"].as_str().unwrap_or("").to_string(),
                 created_at: comment["created_at"].as_str()
@@ -210,10 +210,10 @@ impl GitHubClient {
         
         Ok(comments.iter().map(|comment| {
             ReviewComment {
-                id: comment["id"].as_u64().unwrap_or(0),
+                id: comment["id"].as_u64().unwrap_or(0) as u32,
                 user: User {
                     login: comment["user"]["login"].as_str().unwrap_or("").to_string(),
-                    id: comment["user"]["id"].as_u64().unwrap_or(0),
+                    id: comment["user"]["id"].as_u64().unwrap_or(0) as u32,
                 },
                 body: comment["body"].as_str().unwrap_or("").to_string(),
                 path: comment["path"].as_str().unwrap_or("").to_string(),
@@ -235,10 +235,10 @@ impl GitHubClient {
         
         Ok(reviews.iter().map(|review| {
             Review {
-                id: review["id"].as_u64().unwrap_or(0),
+                id: review["id"].as_u64().unwrap_or(0) as u32,
                 user: User {
                     login: review["user"]["login"].as_str().unwrap_or("").to_string(),
-                    id: review["user"]["id"].as_u64().unwrap_or(0),
+                    id: review["user"]["id"].as_u64().unwrap_or(0) as u32,
                 },
                 body: review["body"].as_str().map(|s| s.to_string()),
                 state: review["state"].as_str().unwrap_or("").to_string(),
