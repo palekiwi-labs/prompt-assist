@@ -51,14 +51,13 @@ chrono = "0.4"         # Date/time handling
 ## Current State
 
 ### What's Implemented
-- [x] Modular architecture with clean separation of concerns
+- [x] Modular architecture with domain-specific modules
 - [x] CLI parsing with clap derive macros
-- [x] Git repository detection and validation using git2
-- [x] **Git information extraction** - remotes, current branch, GitHub URL detection
-- [x] **Builder pattern for RepoInfo** - incremental data gathering
+- [x] **LocalRepo implementation** - git repository handling with GitHub remote detection
+- [x] **PromptContext central data structure** - orchestrates all context for prompt generation
+- [x] **Domain-driven design** - separate modules for each concern (git, local_repo, pull_request, etc.)
 - [x] Output flag (`-o`) for writing to files or stdout
-- [x] **Enhanced markdown prompt generation** with git context
-- [x] Domain-specific error types (GitError, OutputError, AppError)
+- [x] Clean error handling with dedicated error module
 - [x] Pure functional design for core operations
 - [x] Nix development environment with fenix
 - [x] Test fixtures with real git repositories
@@ -79,58 +78,58 @@ prompt-assist 1234 | grep "TODO"                     # Pipe output to other tool
 When you run the CLI, you'll see output like:
 ```
 Generating review prompt for PR #1234
-Found git repository at: /path/to/repo
-Repository root: /path/to/repo
-GitHub remote: git@github.com:user/repo.git
-Current branch: feature/my-feature
 ```
 
-The generated markdown includes:
-- Repository path and root directory
-- GitHub remote URL (ready for API calls)
-- Current branch name
-- Complete list of all git remotes
-- Timestamp and PR context
+The application:
+- Creates a LocalRepo from the provided or current directory
+- Finds the first GitHub remote in the repository
+- Creates a PromptContext with repo and PR information
+- Ready for future: diff generation, issue linking, markdown output
 
 ### Data Structures
 
 **Core Domain Models:**
 ```rust
-pub struct RepoInfo {
-    pub path: PathBuf,
-    pub git_info: Option<GitInfo>,
+pub struct PromptContext {
+    repo: LocalRepo,
+    pr: PullRequest,
+    // Future: diff: Option<GitDiff>,
+    // Future: issues: Vec<JiraIssue>,
 }
 
-pub struct GitInfo {
-    pub repository_root: PathBuf,
-    pub remote_url: Option<String>,    // GitHub URL for API calls
-    pub current_branch: Option<String>,
-    pub remotes: Vec<GitRemote>,       // All remotes for context
+pub struct LocalRepo {
+    pub repo: Repository,  // git2::Repository
+    pub remote: GitRemote, // The GitHub remote
 }
 
 pub struct GitRemote {
     pub name: String,  // "origin", "upstream", etc.
     pub url: String,   // The remote URL
 }
+
+pub struct PullRequest {
+    // To be implemented
+}
 ```
 
-**Builder Pattern Usage:**
+**Context Creation Pattern:**
 ```rust
-let repo_info = RepoInfo::new(repo_path)
-    .with_git_info(git_info);
+let local_repo = LocalRepo::from_path(cli.repo_path)?;
+let pr = PullRequest {}; // Stub for now
+let context = PromptContext::new(local_repo, pr);
 ```
 
-### Enhanced Data Flow
+### Current Data Flow
 ```
 CLI Input (path + PR#) 
     ↓
-resolve_repo_path() → PathBuf (validated)
+LocalRepo::from_path() → LocalRepo (with git2::Repository + GitHub remote)
     ↓  
-extract_git_info() → GitInfo (git2 integration)
+PullRequest creation → PullRequest (stub for now)
     ↓
-RepoInfo::new(path).with_git_info(git_info) → Complete domain model
+PromptContext::new(repo, pr) → Central context object
     ↓
-generate_review_prompt() → Enhanced markdown with git context
+Future: context.with_diff()?.with_issues()?.to_markdown()
     ↓
 write_output() → File or stdout
 ```
@@ -139,11 +138,14 @@ write_output() → File or stdout
 ```
 prompt-assist/
 ├── src/
-│   ├── main.rs          # Minimal CLI entry point (6 lines)
-│   ├── lib.rs           # Library coordination and public API
+│   ├── main.rs          # Minimal CLI entry point
+│   ├── lib.rs           # Library coordination and module exports
 │   ├── cli.rs           # Command-line argument parsing
-│   ├── git.rs           # Git operations using git2 (extraction, validation)
-│   ├── models.rs        # Domain data structures with builder pattern
+│   ├── git.rs           # Git types (GitRemote, GitError)
+│   ├── local_repo.rs    # LocalRepo implementation with git2 operations
+│   ├── pull_request.rs  # PullRequest domain model (stub)
+│   ├── prompt_context.rs # Central PromptContext orchestrator
+│   ├── error.rs         # Application-level error types
 │   ├── output.rs        # File/stdout output handling
 │   └── prompt.rs        # Prompt content generation (pure function)
 ├── fixtures/            # Test git repositories (committed)
@@ -163,11 +165,12 @@ prompt-assist/
 
 ### Architectural Principles
 - **Single Responsibility**: Each module has one clear purpose
-- **Pure Functions**: Core logic is pure where possible (prompt generation, validation)
+- **Domain-Driven Design**: Types and operations organized by business domain
+- **Pure Functions**: Core logic is pure where possible (prompt generation)
 - **Isolated Side Effects**: File I/O and git operations are clearly separated
 - **Composable Errors**: Domain errors that combine well through `From` traits
 - **Clean Dependencies**: Clear module boundaries with minimal coupling
-- **Builder Pattern**: Incremental data gathering with fluent APIs
+- **Central Context Pattern**: PromptContext orchestrates all data for prompt generation
 
 ### Testing Strategy
 - Real git repositories in `fixtures/` for development testing
@@ -177,11 +180,14 @@ prompt-assist/
 
 ### Current Module Responsibilities
 - **cli.rs**: CLI argument parsing only
-- **git.rs**: Git repository operations (validation, git2 integration, remote extraction)
-- **models.rs**: Domain data structures (RepoInfo with builder pattern, GitInfo, GitRemote)
+- **git.rs**: Git types and error definitions (GitRemote, GitError)
+- **local_repo.rs**: Git repository operations (GitHub remote detection, git2 integration)
+- **pull_request.rs**: Pull request domain model (to be implemented)
+- **prompt_context.rs**: Central context orchestration
+- **error.rs**: Application-level error composition
 - **output.rs**: File system writes and stdout handling
-- **prompt.rs**: Markdown content generation (pure function with git context)
-- **lib.rs**: Error composition and application coordination
+- **prompt.rs**: Markdown content generation (pure function)
+- **lib.rs**: Module coordination and public API
 
 ## Next Steps (Planned)
 
@@ -275,4 +281,11 @@ The user is learning Rust and building their first substantial CLI tool. They ap
 
 ## Current Status
 
-We've successfully implemented the **git information extraction foundation** that will enable GitHub API integration. The application now extracts and includes rich git context in generated prompts, setting us up perfectly for the next phase of development: parsing GitHub URLs and implementing API calls to fetch PR details.
+We've successfully **refactored to a domain-driven architecture** with PromptContext as the central orchestrator. The new structure:
+
+- **LocalRepo** handles git repository operations and GitHub remote detection
+- **PromptContext** serves as the central data structure for prompt generation
+- **Clean module separation** with each domain having its own focused module
+- **Extensible design** ready for diff generation, issue linking, and API integration
+
+Next steps: Implement PullRequest with GitHub API integration and add enrichment methods to PromptContext (with_diff, with_issues, to_markdown).
